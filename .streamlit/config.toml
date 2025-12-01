@@ -1,6 +1,5 @@
 [theme]
-primaryColor="#000000"              # Black
-backgroundColor="#ffffff"           # White
-secondaryBackgroundColor="#f5f5f5"  # Sidebar light grey
-textColor="#ffffff"                 # White Text
-sliderColor="#0033aa"               # DARK BLUE slider
+primaryColor="#ffaa00"
+backgroundColor="#ffffff"
+secondaryBackgroundColor="#f5f5f5"
+textColor="#000000"

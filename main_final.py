@@ -5,8 +5,7 @@ import pandas as pd
 import calendar
 import requests
 
-GET_CURL = 'https://script.google.com/macros/s/AKfycbz6nET9Q8Tjulg8tZuZTPzfhZfaLDPE7-FNDLx1oUM2tLHQQiv-_6OOc1241TbzGfnmKw/exec?header=con'
-POST_CURL = 'https://script.google.com/macros/s/AKfycbwsfaiy4MujyCvoc50bZaKsqaX7BEkiNP9IMPBhQlQQ9mF4krZdpn8sPUQCTYWwurf1ww/exec'
+CURL = 'https://script.google.com/macros/s/AKfycbxdg7VughSCeY_GUZtMUYZnPs1SwUbpG-aDUOfPKka8gmBzb3g4NR49nU3djWPWCf9jcQ/exec'
 
 ALLOWED_CATEGORIES = [
     "Snacks",
@@ -38,9 +37,16 @@ Month_Name = [
     "December"
 ]
 
+update_fields = [
+    "amount",
+    "category",
+    "remarks",
+    "date"
+]
+
 def load_json():
     try:
-        response = requests.get(GET_CURL)
+        response = requests.get(CURL)
         response.raise_for_status()
 
         api_data = response.json()
@@ -57,7 +63,7 @@ def write_json(data):
         headers = {"Content-Type": "application/json"}
 
         # Send a POST request
-        response = requests.post(POST_CURL, json=data, headers=headers)
+        response = requests.post(CURL, json=data, headers=headers)
 
         # Print the response
         if response.status_code == 200:
@@ -132,7 +138,7 @@ def view_expenses():
     try:
         print("All Expense: ")
         for i,expense in enumerate(data):
-            print(f'{i+1}. Spent {expense["amount"]} in {expense["category"]} with {expense["remarks"]}')
+            print(f'{expense["ID"]}. Spent {expense["amount"]} in {expense["category"]} with {expense["remarks"]}')
     except Exception as E:
         print(f"Something went wrong: {E}")
 
@@ -197,6 +203,117 @@ def filter_month_category(monthName = None, Category = None):
 
     return filtered
 
+def choose_field_to_update():
+    print("Select fields you want to update:")
+    print("\nWhich fields do you want to update?")
+    for i,field in enumerate(update_fields,1):
+        print(f"{i}. {field}")
+    print("0. Done Selecting")
+
+    selected_fields = []
+    while True:
+        choose_field = input("Enter field number (or 0 to finish): ")
+
+        if choose_field.isdigit():
+            choose_field = int(choose_field)
+
+            if choose_field == 0:
+                break
+
+            elif choose_field > 0 and choose_field <= len(update_fields):
+                field_name = update_fields[choose_field-1]
+                if field_name not in selected_fields:
+                    selected_fields.append(field_name)
+                else:
+                    print("Already Added")
+            else:
+                print("Invalid Choice")
+        else:
+            print("Enter a valid number")
+
+    return selected_fields
+
+
+def get_new_value(field):
+    if field == 'amount':
+        amount = get_positive_amt()
+        return amount
+    
+    elif field == 'category':
+        category = choose_category()
+        return category
+    
+    elif field == 'date':
+        date = input("Enter date in YYYY-MM-DD format: ")
+        return date
+
+    elif field =='remarks':
+        remarks = input("Enter Remarks: ")
+        return remarks
+
+def update_expense():
+    view_expenses()
+
+    ID = int(input("Enter the ID of the expense you want to update: "))
+
+    data = load_json()
+    expense_to_update = {}
+    for expense in data:
+        if ID == expense["ID"]:
+            expense_to_update = expense
+            break
+    
+    if expense_to_update == {}:
+        print(f"No expense found with {ID} ID")
+        return
+
+    field_to_update = choose_field_to_update()
+
+    updated_data = {
+        "method" : "update",
+        "ID" : expense_to_update["ID"] 
+    }
+
+    for key in update_fields:
+        updated_data[key] = expense_to_update[key]
+
+    for field in field_to_update:
+        new_value = get_new_value(field)
+        updated_data[field] = new_value
+
+    response = write_json(updated_data)
+
+    print("Updated Expense") 
+    print(f"{updated_data['ID']} || {updated_data['amount']} || {updated_data['remarks']} || {updated_data['category']} || {updated_data['date']}")
+
+
+def delete_expense():
+    view_expenses()
+
+    ID = int(input("Enter the ID of the expense you want to delete: "))
+
+    data = load_json()
+    expense_to_delete = {}
+    for expense in data:
+        if ID == expense["ID"]:
+            expense_to_delete = expense
+            break
+    
+    if expense_to_delete ==  {}:
+        print(f"No expense found with {ID} ID")
+        return
+    
+    update_expense = {
+        "method" : "delete",
+        "ID" : expense_to_delete["ID"]
+    }
+
+    response = write_json(update_expense)
+
+    view_expenses()
+
+
+
 def menu():
     print("\n--Expense Tracker Menu--")
     print("1. Add Expenses")
@@ -205,7 +322,9 @@ def menu():
     print("4. Export To CSV")
     print("5. Filter by Category")
     print("6. Filteration on Month OR Category")
-    print("7. Exit")
+    print("7. Update an Expense")
+    print("8. Delete an Expense")
+    print("9. Exit")
 
 def get_choice():
     while True:
@@ -215,7 +334,8 @@ def get_choice():
         else:
             print("Enter a valid number")
 
-if __name__ == "main":
+
+if __name__ == "__main__":
     while True:
         menu()
         choice = get_choice()
@@ -242,8 +362,13 @@ if __name__ == "main":
             for i, exp in enumerate(result, 1):
                 print(f"{i}. {exp['amount']} | {exp['category']} | {exp['remarks']} | {exp['date']}")
 
-
         elif choice == 7:
+            update_expense()
+
+        elif choice == 8:
+            delete_expense()
+
+        elif choice == 9:
             break
 
         else:
